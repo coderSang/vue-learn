@@ -1,0 +1,23 @@
+{
+  "id": "2416350",
+  "name": "test",
+  "font_family": "iconfont",
+  "css_prefix_text": "icon",
+  "description": "",
+  "glyphs": [
+    {
+      "icon_id": "17122677",
+      "name": "导出",
+      "font_class": "daochu",
+      "unicode": "e602",
+      "unicode_decimal": 58882
+    },
+    {
+      "icon_id": "17122678",
+      "name": "关闭",
+      "font_class": "guanbi",
+      "unicode": "e603",
+      "unicode_decimal": 58883
+    }
+  ]
+}
