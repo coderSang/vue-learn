@@ -34,7 +34,7 @@ const ast = {
 };
 const newAst = {
   type: 'Program',
-  body: [{
+  body: [ {
     type: 'ExpressionStatement',
     expression: {
       type: 'CallExpression',
@@ -212,25 +212,31 @@ function parser(tokens) {
   }
   return ast
 }
-// 改写，把ast转换成另一个新的ast
+// 遍历
 function traverser(ast, visitor) {
-  // 从根节点开始
+  // 从根节点进入
   traverseNode(ast, null)
+  // 遍历数组节点
   function traverseArray(array, parent) {
     array.forEach(child => {
       traverseNode(child, parent);
     });
   }
+  // 递归遍历
   function traverseNode(node, parent){
+    // 有enter函数，则执行进入节点的操作
     let methods = visitor[node.type]
-    if (methods && methods.enter) { // 有enter函数，则执行， 把node挂载到parent上
+    if (methods && methods.enter) {
       methods.enter(node, parent);
     }
     switch (node.type) {
       case 'Program':
+        // 如果是根节点，需要遍历body[{},{},{}]，遍历之后就要traverseNode(child1, root),traverseNode(child2, root)
         traverseArray(node.body, node)
         break;
       case 'CallExpression':
+        // 如果是方法，需要遍历params:[{param1},{param2}]，遍历之后就要traverseNode(param1, method_node),
+        // traverseNode(param2, method_node)
         traverseArray(node.params, node)
         break;
       case 'NumberLiteral':
@@ -241,6 +247,7 @@ function traverser(ast, visitor) {
     }
   }
 }
+// 改写，把ast转换成另一个新的ast
 function transformer(ast) {
   // 新的抽象语法树结构
   const newAst = {
@@ -250,12 +257,12 @@ function transformer(ast) {
   // 把老的ast_content指向新ast的body，方便赋值
   ast._content = newAst.body
   traverser(ast, {
-    // 转换,不同的类型需要不同的转换方法
+    // 进入节点的时候进行的操作
     // 用一个访问器来访问不同类型的节点，做出不同的操作
     // 一共有四类节点，Program，CallExpression， NumberLiteral， StringLiteral
     //  我们需要把节点和其父节点一起传入，这样才能把子节点挂载到父节点上
-    // StringLiteral， NumberLiteral，在访问时直接返回就行
-    // CallExpression在访问时要创建新的复合newAst格式的节点
+    // StringLiteral， NumberLiteral，在访问时直接挂载到父节点的参数上即可
+    // CallExpression在访问时要创建新的符合newAst格式的节点
     // type: 'CallExpression',
     // callee: {
     //   type: 'Identifier',
@@ -284,15 +291,19 @@ function transformer(ast) {
     // 方法节点，要进行遍历
     CallExpression: {
       enter(node, parent) {
+        // 新节点格式
         let expression = {
           type: 'CallExpression',
           callee: {
             type: 'Identifier',
             name: node.name,
           },
+          // 参数
           arguments: [],
         };
         // 本节点的内容，还需要进一步解析
+        // 本节点的值指向arguments，expression赋值给父节点，
+        // 当遍历到参数的时候，会像参数的父节点，也就是本节点的——content传入值
         node._content = expression.arguments
         // 父节点不是函数，那就是Program，是入口，就在外面再包一层
         if (parent.type !== 'CallExpression') {
@@ -312,10 +323,13 @@ function transformer(ast) {
 function codeGenerator(node) {
   switch (node.type) {
     case 'Program':
+      // 递归调用body: [{},{}]
       return node.body.map(codeGenerator).join('\n');
     case 'ExpressionStatement':
+      // body里的每一项都是ExpressionStatement，代表了多个方法，用；分割
       return codeGenerator(node.expression)+';'
     case 'CallExpression':
+      // 函数， 返回add(2,3)之类的格式，递归调用arguments，node.callee会返回函数名
       return (
         codeGenerator(node.callee) +
         '(' +
@@ -324,6 +338,7 @@ function codeGenerator(node) {
         ')'
       );
     case 'Identifier':
+      // 返回函数名
       return node.name;
     case 'NumberLiteral':
       return node.value;
@@ -345,4 +360,3 @@ function compiler(input) {
 module.exports = {
   compiler
 }
-console.log(parser(tokens))
